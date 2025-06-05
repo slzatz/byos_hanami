@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "dry/monads"
-require "terminus/screens/redirect_saver"
 
 module Terminus
   module Screens
