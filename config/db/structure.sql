@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.0
--- Dumped by pg_dump version 17.0
+-- Dumped from database version 17.4
+-- Dumped by pg_dump version 17.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -134,7 +134,7 @@ CREATE TABLE public.devices (
     height integer DEFAULT 0 NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    proxy boolean DEFAULT false NOT NULL,
+    proxy boolean,
     firmware_update boolean DEFAULT false NOT NULL,
     sleep_start_at time without time zone,
     sleep_end_at time without time zone

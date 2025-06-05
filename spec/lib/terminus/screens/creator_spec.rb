@@ -35,6 +35,17 @@ RSpec.describe Terminus::Screens::Creator do
       expect(image).to have_attributes(width: 50, height: 50, type: "PNG", exif: {})
     end
 
+    it "saves remote URI as redirect file" do
+      remote_uri = "https://example.com/image.png"
+      redirect_path = output_path.sub_ext(".redirect")
+      
+      result = saver.call(output_path, remote_uri: remote_uri)
+      
+      expect(result).to be_success
+      expect(redirect_path).to exist
+      expect(redirect_path.read).to eq(remote_uri)
+    end
+
     it "answers failure with invalid parameters" do
       expect(saver.call(output_path, bogus: :danger)).to be_failure(
         "Invalid parameters: {bogus: :danger}."

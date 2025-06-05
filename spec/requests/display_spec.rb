@@ -114,6 +114,25 @@ RSpec.describe "/api/display", :db do
     )
   end
 
+  it "answers with remote URI when redirect file exists" do
+    remote_uri = "https://example.com/remote-image.png"
+    redirect_file = temp_dir.join("#{device.slug}/redirect.redirect")
+    redirect_file.make_ancestors.write(remote_uri)
+
+    get routes.path(:api_display), {}, **firmware_headers
+
+    expect(json_payload).to include(
+      filename: "redirect.redirect",
+      firmware_url: /.*0\.0\.0\.bin/,
+      image_url: remote_uri,
+      image_url_timeout: 0,
+      refresh_rate: 900,
+      reset_firmware: false,
+      special_function: "sleep",
+      update_firmware: false
+    )
+  end
+
   context "with invalid/missing headers" do
     before { get routes.path(:api_display) }
 

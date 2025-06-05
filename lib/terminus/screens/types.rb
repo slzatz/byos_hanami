@@ -3,6 +3,6 @@
 module Terminus
   module Screens
     # Defines supported image types along with corresponding MiniMagick version types.
-    TYPES = {"bmp" => "bmp3", "png" => "png"}.freeze
+    TYPES = {"bmp" => "bmp3", "png" => "png", "redirect" => "redirect"}.freeze
   end
 end

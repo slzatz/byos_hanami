@@ -55,6 +55,20 @@ RSpec.describe "/api/screens", :db do
     expect(image).to have_attributes(width: 50, height: 100)
   end
 
+  it "creates redirect file from remote URI" do
+    remote_uri = "https://example.com/image.png"
+    
+    post routes.path(:api_screens_create),
+         {image: {remote_uri: remote_uri}}.to_json,
+         "CONTENT_TYPE" => "application/json",
+         "HTTP_ACCESS_TOKEN" => device.api_key
+
+    redirect_path = Pathname(json_payload[:path])
+    expect(redirect_path.exist?).to be(true)
+    expect(redirect_path.extname).to eq(".redirect")
+    expect(redirect_path.read).to eq(remote_uri)
+  end
+
   context "with unknown device" do
     before do
       post routes.path(:api_screens_create),
@@ -114,7 +128,7 @@ RSpec.describe "/api/screens", :db do
       problem = Petail[
         type: "/problem_details#screen_payload",
         status: :unprocessable_entity,
-        detail: %(Invalid image type: "". Use: "bmp" or "png".),
+        detail: %(Invalid image type: "". Use: "bmp", "png", or "redirect".),
         instance: "/api/screens"
       ]
 

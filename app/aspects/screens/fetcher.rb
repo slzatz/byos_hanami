@@ -41,7 +41,9 @@ module Terminus
         end
 
         def image_url device, image_path, encryption
-          if encryptions.include?(encryption) && encryption == :base_64
+          if image_path.extname == ".redirect"
+            image_path.read.strip
+          elsif encryptions.include?(encryption) && encryption == :base_64
             "data:image/bmp;base64,#{Base64.strict_encode64 image_path.read}"
           else
             "#{settings.api_uri}/assets/screens/#{device.slug}/#{image_path.basename}"
