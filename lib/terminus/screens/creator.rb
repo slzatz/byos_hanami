@@ -17,7 +17,6 @@ module Terminus
 
       def call output_path, **parameters
         case parameters
-          in content:, dimensions: then html_saver.call content, output_path, dimensions
           in content: then html_saver.call content, output_path
           in uri:, dimensions: then uri_saver.call uri, output_path, dimensions
           in data:, dimensions: then decoder.call data, output_path, dimensions
