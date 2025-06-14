@@ -47,7 +47,7 @@ module Terminus
           private
 
           def save device, image, response
-            result = creator.call output_path(device.slug, image), dimensions: device.dimensions, **image
+            result = creator.call output_path(device.slug, image), dimensions: "#{device.width}x#{device.height}", **image
 
             if result.success?
               response.with body: {path: result.success}.to_json, format: :json, status: 200
