@@ -35,12 +35,14 @@ module Terminus
                 device = repository.find(synced_device.id)
                 image = fetch_image(request.params, environment, device)
                 current_image_mtime = get_image_mtime(device, image)
+                
+                # Determine special_function BEFORE updating timestamp (uses previous call's timestamp)
                 special_function = determine_special_function(device, image)
                 record = build_record(image, device, special_function)
                 
-                # Update the device's last displayed time after determining special_function
+                # Update the device's timestamp for the NEXT API call
                 if current_image_mtime
-                  puts "DEBUG: About to update device #{device.id}"
+                  puts "DEBUG: About to update device #{device.id} for next call"
                   puts "DEBUG: current_image_mtime = #{current_image_mtime.inspect} (#{current_image_mtime.class})"
                   
                   # Validate and normalize timestamp
@@ -54,7 +56,7 @@ module Terminus
                   
                   begin
                     repository.update(device.id, **attributes)
-                    puts "DEBUG: Update successful"
+                    puts "DEBUG: Update successful - next call will compare against this timestamp"
                   rescue => e
                     puts "DEBUG: Update failed: #{e.class} - #{e.message}"
                     puts "DEBUG: SQL error details: #{e.cause.inspect if e.respond_to?(:cause)}"
