@@ -31,7 +31,7 @@ module Terminus
 
             case synchronizer.call environment
               in Success(synced_device)
-                # Get the latest device state to ensure we have current last_displayed_image_mtime
+                # Get the latest device state to ensure we have current last_displayed_image_size
                 device = repository.find(synced_device.id)
                 image = fetch_image(request.params, environment, device)
                 current_image_size = get_image_size(device, image)
@@ -45,7 +45,7 @@ module Terminus
                   puts "DEBUG: About to update device #{device.id} for next call"
                   puts "DEBUG: current_image_size = #{current_image_size.inspect} (#{current_image_size.class})"
                   
-                  # Store file size as an integer in the timestamp column (repurposing the column)
+                  # Store file size as integer (column now stores file sizes, not timestamps)
                   attributes = {last_displayed_image_mtime: current_image_size}
                   puts "DEBUG: Final update attributes = #{attributes.inspect}"
                   
@@ -88,7 +88,7 @@ module Terminus
           end
 
           def determine_special_function device, image
-            # Ensure we have a device with the last_displayed_image_mtime attribute loaded
+            # Ensure we have a device with the last_displayed_image_mtime attribute loaded (stores file size)
             unless device.respond_to?(:last_displayed_image_mtime)
               puts "DEBUG: Device missing last_displayed_image_mtime, reloading..."
               device = repository.find(device.id)
@@ -96,7 +96,7 @@ module Terminus
             
             # Additional safety check - if the method exists but accessing it throws an error
             begin
-              last_displayed_size = device.last_displayed_image_mtime  # Now stores file size
+              last_displayed_size = device.last_displayed_image_mtime  # Column stores file size as integer
               puts "DEBUG: device.last_displayed_size = #{last_displayed_size.inspect}"
             rescue ROM::Struct::MissingAttribute => e
               puts "DEBUG: MissingAttribute error accessing last_displayed_image_mtime: #{e.message}"
