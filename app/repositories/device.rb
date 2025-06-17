@@ -30,6 +30,7 @@ module Terminus
         return relation.one if attributes.empty?
 
         relation.command(:update).call(**attributes)
+        relation.one
       end
     end
   end

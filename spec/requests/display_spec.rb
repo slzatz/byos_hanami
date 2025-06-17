@@ -171,8 +171,10 @@ RSpec.describe "/api/display", :db do
         special_function: "sleep"
       )
 
-      # Ensure file mtime hasn't changed - keep the same past time
-      File.utime(past_time, past_time, image_path.to_s)
+      # The Toucher updates the file's mtime during the first request, so we need
+      # to keep that mtime for the second request to be considered the same image
+      actual_mtime = image_path.mtime
+      File.utime(actual_mtime, actual_mtime, image_path.to_s)
 
       # Second call - should return "none" since same image was just displayed
       get routes.path(:api_display), {}, **firmware_headers
