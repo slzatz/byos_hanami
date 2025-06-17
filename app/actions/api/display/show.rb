@@ -79,8 +79,19 @@ module Terminus
               device = repository.find(device.id)
             end
             
-            puts "DEBUG: device.last_displayed_image_mtime = #{device.last_displayed_image_mtime.inspect}"
-            return "sleep" unless device.last_displayed_image_mtime
+            # Additional safety check - if the method exists but accessing it throws an error
+            begin
+              last_displayed_time = device.last_displayed_image_mtime
+              puts "DEBUG: device.last_displayed_image_mtime = #{last_displayed_time.inspect}"
+            rescue ROM::Struct::MissingAttribute => e
+              puts "DEBUG: MissingAttribute error accessing last_displayed_image_mtime: #{e.message}"
+              puts "DEBUG: Reloading device again..."
+              device = repository.find(device.id)
+              last_displayed_time = device.last_displayed_image_mtime rescue nil
+              puts "DEBUG: After reload, last_displayed_image_mtime = #{last_displayed_time.inspect}"
+            end
+            
+            return "sleep" unless last_displayed_time
             
             current_image_mtime = get_image_mtime(device, image)
             puts "DEBUG: current_image_mtime = #{current_image_mtime.inspect}"
@@ -88,7 +99,7 @@ module Terminus
             
             # Round both times to microseconds to handle database precision differences
             current_rounded = Time.at(current_image_mtime.to_f.round(6))
-            stored_rounded = Time.at(device.last_displayed_image_mtime.to_f.round(6))
+            stored_rounded = Time.at(last_displayed_time.to_f.round(6))
             
             # Compare timestamps with a small tolerance to handle precision differences
             time_diff = (current_rounded.to_f - stored_rounded.to_f).abs
