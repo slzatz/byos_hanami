@@ -30,7 +30,9 @@ module Terminus
             environment = request.env
 
             case synchronizer.call environment
-              in Success(device)
+              in Success(synced_device)
+                # Get the latest device state to ensure we have current last_displayed_image_mtime
+                device = repository.find(synced_device.id)
                 image = fetch_image(request.params, environment, device)
                 current_image_mtime = get_image_mtime(device, image)
                 special_function = determine_special_function(device, image)
@@ -77,9 +79,11 @@ module Terminus
               device = repository.find(device.id)
             end
             
+            puts "DEBUG: device.last_displayed_image_mtime = #{device.last_displayed_image_mtime.inspect}"
             return "sleep" unless device.last_displayed_image_mtime
             
             current_image_mtime = get_image_mtime(device, image)
+            puts "DEBUG: current_image_mtime = #{current_image_mtime.inspect}"
             return "sleep" unless current_image_mtime
             
             # Round both times to microseconds to handle database precision differences
@@ -88,9 +92,13 @@ module Terminus
             
             # Compare timestamps with a small tolerance to handle precision differences
             time_diff = (current_rounded.to_f - stored_rounded.to_f).abs
+            puts "DEBUG: time_diff = #{time_diff}, threshold = 0.001"
+            
             if time_diff > 0.001  # More than 1ms difference means it's a new/updated image
+              puts "DEBUG: Returning 'sleep' (new/updated image)"
               "sleep"
             else
+              puts "DEBUG: Returning 'none' (same image)"
               "none"
             end
           end
