@@ -154,4 +154,53 @@ RSpec.describe "/api/display", :db do
       )
     end
   end
+
+  context "with special_function based on image display history" do
+    it "returns 'sleep' for first display of image, then 'none' for subsequent displays" do
+      image_path = temp_dir.join("#{device.slug}/test.bmp")
+      
+      # Set a specific modification time in the past for consistent testing
+      past_time = Time.now - 60  # 1 minute ago
+      File.utime(past_time, past_time, image_path.to_s)
+      
+      # First call - should return "sleep" since image hasn't been displayed before
+      get routes.path(:api_display), {}, **firmware_headers
+
+      expect(json_payload).to include(
+        filename: "test.bmp",
+        special_function: "sleep"
+      )
+
+      # Ensure file mtime hasn't changed - keep the same past time
+      File.utime(past_time, past_time, image_path.to_s)
+
+      # Second call - should return "none" since same image was just displayed
+      get routes.path(:api_display), {}, **firmware_headers
+
+      expect(json_payload).to include(
+        filename: "test.bmp",
+        special_function: "none"
+      )
+    end
+
+    it "returns 'sleep' when image file is updated with new content" do
+      image_path = temp_dir.join("#{device.slug}/test.bmp")
+      
+      # Set initial modification time
+      past_time = Time.now - 60
+      File.utime(past_time, past_time, image_path.to_s)
+      
+      # First call - should return "sleep"
+      get routes.path(:api_display), {}, **firmware_headers
+      expect(json_payload).to include(special_function: "sleep")
+
+      # Update the image file with a newer modification time
+      newer_time = Time.now
+      File.utime(newer_time, newer_time, image_path.to_s)
+
+      # Second call after image update - should return "sleep" again
+      get routes.path(:api_display), {}, **firmware_headers
+      expect(json_payload).to include(special_function: "sleep")
+    end
+  end
 end

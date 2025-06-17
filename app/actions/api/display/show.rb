@@ -12,9 +12,11 @@ module Terminus
         # The show action.
         class Show < Terminus::Action
           include Deps[
+            :settings,
             image_fetcher: "aspects.screens.rotator",
             firmware_fetcher: "aspects.firmware.fetcher",
-            synchronizer: "aspects.synchronizers.device"
+            synchronizer: "aspects.synchronizers.device",
+            repository: "repositories.device"
           ]
 
           include Initable[problem: Petail, model: TRMNL::API::Models::Display]
@@ -29,7 +31,16 @@ module Terminus
 
             case synchronizer.call environment
               in Success(device)
-                record = build_record fetch_image(request.params, environment, device), device
+                image = fetch_image(request.params, environment, device)
+                current_image_mtime = get_image_mtime(device, image)
+                special_function = determine_special_function(device, image)
+                record = build_record(image, device, special_function)
+                
+                # Update the device's last displayed time after determining special_function
+                if current_image_mtime
+                  repository.update(device.id, last_displayed_image_mtime: current_image_mtime)
+                end
+                
                 response.with body: record.to_json, status: 200
               else not_found response
             end
@@ -43,9 +54,10 @@ module Terminus
             image_fetcher.call device, encryption:
           end
 
-          def build_record image, device
+          def build_record image, device, special_function
             model[
               firmware_url: fetch_firmware_uri(device),
+              special_function: special_function,
               **image.slice(:image_url, :filename),
               **device.as_api_display
             ]
@@ -57,6 +69,31 @@ module Terminus
               firmware.uri if firmware && device.firmware_version != firmware.version
             end
           end
+
+          def determine_special_function device, image
+            return "sleep" unless device.last_displayed_image_mtime
+            
+            current_image_mtime = get_image_mtime(device, image)
+            return "sleep" unless current_image_mtime
+            
+            # Compare timestamps with a small tolerance to handle microsecond differences
+            time_diff = current_image_mtime.to_f - device.last_displayed_image_mtime.to_f
+            if time_diff > 0.001  # More than 1ms difference means it's a new/updated image
+              "sleep"
+            else
+              "none"
+            end
+          end
+
+          def get_image_mtime device, image
+            return nil if image[:filename] == "setup"
+            
+            image_path = settings.screens_root.join(device.slug).join(image[:filename])
+            return nil unless image_path.exist?
+            
+            image_path.mtime
+          end
+
 
           def not_found response
             body = problem[
