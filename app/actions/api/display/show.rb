@@ -34,29 +34,24 @@ module Terminus
                 # Get the latest device state to ensure we have current last_displayed_image_mtime
                 device = repository.find(synced_device.id)
                 image = fetch_image(request.params, environment, device)
-                current_image_mtime = get_image_mtime(device, image)
+                current_image_size = get_image_size(device, image)
                 
-                # Determine special_function BEFORE updating timestamp (uses previous call's timestamp)
+                # Determine special_function BEFORE updating size (uses previous call's size)
                 special_function = determine_special_function(device, image)
                 record = build_record(image, device, special_function)
                 
-                # Update the device's timestamp for the NEXT API call
-                if current_image_mtime
+                # Update the device's file size for the NEXT API call
+                if current_image_size
                   puts "DEBUG: About to update device #{device.id} for next call"
-                  puts "DEBUG: current_image_mtime = #{current_image_mtime.inspect} (#{current_image_mtime.class})"
+                  puts "DEBUG: current_image_size = #{current_image_size.inspect} (#{current_image_size.class})"
                   
-                  # Validate and normalize timestamp
-                  unless current_image_mtime.is_a?(Time)
-                    puts "DEBUG: Converting timestamp to Time object"
-                    current_image_mtime = Time.at(current_image_mtime) if current_image_mtime.respond_to?(:to_f)
-                  end
-                  
-                  attributes = {last_displayed_image_mtime: current_image_mtime}
+                  # Store file size as an integer in the timestamp column (repurposing the column)
+                  attributes = {last_displayed_image_mtime: current_image_size}
                   puts "DEBUG: Final update attributes = #{attributes.inspect}"
                   
                   begin
                     repository.update(device.id, **attributes)
-                    puts "DEBUG: Update successful - next call will compare against this timestamp"
+                    puts "DEBUG: Update successful - next call will compare against this file size"
                   rescue => e
                     puts "DEBUG: Update failed: #{e.class} - #{e.message}"
                     puts "DEBUG: SQL error details: #{e.cause.inspect if e.respond_to?(:cause)}"
@@ -101,46 +96,40 @@ module Terminus
             
             # Additional safety check - if the method exists but accessing it throws an error
             begin
-              last_displayed_time = device.last_displayed_image_mtime
-              puts "DEBUG: device.last_displayed_image_mtime = #{last_displayed_time.inspect}"
+              last_displayed_size = device.last_displayed_image_mtime  # Now stores file size
+              puts "DEBUG: device.last_displayed_size = #{last_displayed_size.inspect}"
             rescue ROM::Struct::MissingAttribute => e
               puts "DEBUG: MissingAttribute error accessing last_displayed_image_mtime: #{e.message}"
               puts "DEBUG: Reloading device again..."
               device = repository.find(device.id)
-              last_displayed_time = device.last_displayed_image_mtime rescue nil
-              puts "DEBUG: After reload, last_displayed_image_mtime = #{last_displayed_time.inspect}"
+              last_displayed_size = device.last_displayed_image_mtime rescue nil
+              puts "DEBUG: After reload, last_displayed_size = #{last_displayed_size.inspect}"
             end
             
-            return "sleep" unless last_displayed_time
+            return "sleep" unless last_displayed_size
             
-            current_image_mtime = get_image_mtime(device, image)
-            puts "DEBUG: current_image_mtime = #{current_image_mtime.inspect}"
-            return "sleep" unless current_image_mtime
+            current_image_size = get_image_size(device, image)
+            puts "DEBUG: current_image_size = #{current_image_size.inspect}"
+            return "sleep" unless current_image_size
             
-            # Round both times to microseconds to handle database precision differences
-            current_rounded = Time.at(current_image_mtime.to_f.round(6))
-            stored_rounded = Time.at(last_displayed_time.to_f.round(6))
-            
-            # Compare timestamps with a small tolerance to handle precision differences
-            time_diff = (current_rounded.to_f - stored_rounded.to_f).abs
-            puts "DEBUG: time_diff = #{time_diff}, threshold = 0.001"
-            
-            if time_diff > 0.001  # More than 1ms difference means it's a new/updated image
-              puts "DEBUG: Returning 'sleep' (new/updated image)"
-              "sleep"
-            else
-              puts "DEBUG: Returning 'none' (same image)"
+            # Simple file size comparison - no tolerance needed
+            if current_image_size == last_displayed_size
+              puts "DEBUG: Returning 'none' (same file size = same image)"
               "none"
+            else
+              puts "DEBUG: Returning 'sleep' (different file size = new/updated image)"
+              "sleep"
             end
           end
 
-          def get_image_mtime device, image
+          def get_image_size device, image
             return nil if image[:filename] == "setup"
             
             image_path = settings.screens_root.join(device.slug).join(image[:filename])
             return nil unless image_path.exist?
             
-            image_path.mtime
+            # Use file size instead of timestamps - much more reliable
+            image_path.size
           end
 
 
