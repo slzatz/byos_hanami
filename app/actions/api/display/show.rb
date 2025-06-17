@@ -30,9 +30,7 @@ module Terminus
             environment = request.env
 
             case synchronizer.call environment
-              in Success(synced_device)
-                # Get the latest device state to ensure we have current last_displayed_image_mtime
-                device = repository.find(synced_device.id)
+              in Success(device)
                 image = fetch_image(request.params, environment, device)
                 current_image_mtime = get_image_mtime(device, image)
                 special_function = determine_special_function(device, image)
@@ -73,6 +71,12 @@ module Terminus
           end
 
           def determine_special_function device, image
+            # Ensure we have a device with the last_displayed_image_mtime attribute loaded
+            unless device.respond_to?(:last_displayed_image_mtime)
+              puts "DEBUG: Device missing last_displayed_image_mtime, reloading..."
+              device = repository.find(device.id)
+            end
+            
             return "sleep" unless device.last_displayed_image_mtime
             
             current_image_mtime = get_image_mtime(device, image)
