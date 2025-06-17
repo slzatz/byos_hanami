@@ -40,7 +40,25 @@ module Terminus
                 
                 # Update the device's last displayed time after determining special_function
                 if current_image_mtime
-                  repository.update(device.id, last_displayed_image_mtime: current_image_mtime)
+                  puts "DEBUG: About to update device #{device.id}"
+                  puts "DEBUG: current_image_mtime = #{current_image_mtime.inspect} (#{current_image_mtime.class})"
+                  
+                  # Validate and normalize timestamp
+                  unless current_image_mtime.is_a?(Time)
+                    puts "DEBUG: Converting timestamp to Time object"
+                    current_image_mtime = Time.at(current_image_mtime) if current_image_mtime.respond_to?(:to_f)
+                  end
+                  
+                  attributes = {last_displayed_image_mtime: current_image_mtime}
+                  puts "DEBUG: Final update attributes = #{attributes.inspect}"
+                  
+                  begin
+                    repository.update(device.id, **attributes)
+                    puts "DEBUG: Update successful"
+                  rescue => e
+                    puts "DEBUG: Update failed: #{e.class} - #{e.message}"
+                    puts "DEBUG: SQL error details: #{e.cause.inspect if e.respond_to?(:cause)}"
+                  end
                 end
                 
                 response.with body: record.to_json, status: 200
