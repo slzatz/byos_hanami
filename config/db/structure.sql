@@ -138,7 +138,7 @@ CREATE TABLE public.devices (
     firmware_update boolean DEFAULT false NOT NULL,
     sleep_start_at time without time zone,
     sleep_end_at time without time zone,
-    last_displayed_image_mtime timestamp without time zone
+    last_displayed_image_mtime integer
 );
 
 
@@ -240,4 +240,5 @@ INSERT INTO schema_migrations (filename) VALUES
 ('20250429114320_remove_device_setup_at_column.rb'),
 ('20250429115049_change_device_column_text_types.rb'),
 ('20250602132300_add_device_sleep_period.rb'),
-('20250616175644_add_device_last_displayed_image_mtime.rb');
+('20250616175644_add_device_last_displayed_image_mtime.rb'),
+('20250617145214_change_last_displayed_image_mtime_to_integer.rb');
